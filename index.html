@@ -636,45 +636,111 @@ let selectedGenres = [];
 let segments = [];
 let collectedTracks = [];
 
-// ── AUTH ──────────────────────────────────────────────
-function connectSpotify() {
-  const state = Math.random().toString(36).slice(2);
-  sessionStorage.setItem('spotify_state', state);
-  const url = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}&state=${state}&show_dialog=false`;
-  window.location.href = url;
+// ── AUTH (PKCE) ───────────────────────────────────────
+function generateRandom(len) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function parseToken() {
-  const hash = window.location.hash.slice(1);
-  if (!hash) return null;
-  const params = Object.fromEntries(hash.split('&').map(p => p.split('=')));
-  if (params.access_token) {
-    window.history.replaceState(null, '', window.location.pathname);
-    return params.access_token;
-  }
-  return null;
+async function sha256(plain) {
+  const enc = new TextEncoder().encode(plain);
+  const hash = await crypto.subtle.digest('SHA-256', enc);
+  return hash;
+}
+
+function base64url(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function connectSpotify() {
+  const verifier = generateRandom(64);
+  const challenge = base64url(await sha256(verifier));
+  sessionStorage.setItem('pkce_verifier', verifier);
+
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    response_type: 'code',
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPES,
+    code_challenge_method: 'S256',
+    code_challenge: challenge
+  });
+  window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+}
+
+async function exchangeCode(code) {
+  const verifier = sessionStorage.getItem('pkce_verifier');
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: CLIENT_ID,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: verifier
+    })
+  });
+  if (!r.ok) return null;
+  const data = await r.json();
+  sessionStorage.setItem('rc_token', data.access_token);
+  if (data.refresh_token) sessionStorage.setItem('rc_refresh', data.refresh_token);
+  return data.access_token;
+}
+
+async function refreshToken() {
+  const rt = sessionStorage.getItem('rc_refresh');
+  if (!rt) return null;
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: CLIENT_ID,
+      grant_type: 'refresh_token',
+      refresh_token: rt
+    })
+  });
+  if (!r.ok) return null;
+  const data = await r.json();
+  sessionStorage.setItem('rc_token', data.access_token);
+  return data.access_token;
 }
 
 async function fetchProfile(tok) {
   const r = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: `Bearer ${tok}` } });
+  if (r.status === 401) {
+    const newTok = await refreshToken();
+    if (!newTok) return null;
+    token = newTok;
+    const r2 = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: `Bearer ${newTok}` } });
+    if (!r2.ok) return null;
+    return r2.json();
+  }
   if (!r.ok) return null;
   return r.json();
 }
 
 // ── INIT ──────────────────────────────────────────────
 window.addEventListener('load', async () => {
-  const tok = parseToken();
-  if (tok) {
-    token = tok;
-    sessionStorage.setItem('rc_token', tok);
-    userProfile = await fetchProfile(tok);
-    initApp();
-  } else {
-    const saved = sessionStorage.getItem('rc_token');
-    if (saved) {
-      const test = await fetchProfile(saved);
-      if (test) { token = saved; userProfile = test; initApp(); }
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+
+  if (code) {
+    window.history.replaceState(null, '', window.location.pathname);
+    token = await exchangeCode(code);
+    if (token) {
+      userProfile = await fetchProfile(token);
+      initApp();
+      return;
     }
+  }
+
+  const saved = sessionStorage.getItem('rc_token');
+  if (saved) {
+    const profile = await fetchProfile(saved);
+    if (profile) { token = saved; userProfile = profile; initApp(); return; }
   }
 });
 
