@@ -910,63 +910,98 @@ async function goToResults() {
 }
 
 // ── SPOTIFY TRACK FETCH ───────────────────────────────
+// Uses Search API + Audio Features (recommendations endpoint deprecated for new apps)
+
+async function spotifyGet(url) {
+  let r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (r.status === 401) {
+    const newTok = await refreshToken();
+    if (!newTok) return null;
+    token = newTok;
+    r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  }
+  if (!r.ok) return null;
+  return r.json();
+}
+
 async function fetchTracksForSeg(i, seg, bpm) {
   const lbar = document.getElementById(`lbar-${i}`);
   const tlist = document.getElementById(`track-list-${i}`);
 
   try {
-    lbar.style.width = '40%';
-    const seeds = selectedGenres.slice(0, 2).map(g => GENRE_SEEDS[g] || g.toLowerCase()).join(',');
-    const energy = ENERGY_MAP[seg.mood];
+    lbar.style.width = '20%';
 
-    const params = new URLSearchParams({
-      seed_genres: seeds,
-      target_tempo: bpm,
-      min_tempo: bpm - 8,
-      max_tempo: bpm + 8,
-      target_energy: energy,
-      min_energy: Math.max(0, energy - 0.2),
-      limit: 6
+    // Build search query from selected genres + mood keywords
+    const moodKeywords = {
+      warmup: 'chill easy',
+      steady: 'running workout',
+      push: 'energy power',
+      peak: 'intense hype pump',
+      cooldown: 'calm relax'
+    };
+    const genreQuery = selectedGenres.slice(0, 2).join(' ');
+    const moodQ = moodKeywords[seg.mood] || 'workout';
+    const query = `${genreQuery} ${moodQ}`;
+
+    // Search for tracks — get 50 so we have enough to filter by BPM
+    const searchParams = new URLSearchParams({
+      q: query,
+      type: 'track',
+      limit: 50
     });
 
-    const r = await fetch(`https://api.spotify.com/v1/recommendations?${params}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const searchData = await spotifyGet(`https://api.spotify.com/v1/search?${searchParams}`);
+    lbar.style.width = '50%';
+
+    if (!searchData) {
+      tlist.innerHTML = `<div class="seg-error">Could not search Spotify. Try reconnecting.</div>`;
+      return;
+    }
+
+    const candidates = searchData.tracks?.items || [];
+    if (!candidates.length) {
+      tlist.innerHTML = `<div class="seg-error">No tracks found. Try different genres.</div>`;
+      return;
+    }
+
+    // Get audio features for all candidates in one batch call
+    const ids = candidates.map(t => t.id).join(',');
+    const featData = await spotifyGet(`https://api.spotify.com/v1/audio-features?ids=${ids}`);
+    lbar.style.width = '80%';
+
+    const features = featData?.audio_features || [];
+
+    // Match candidates with their features
+    const bpmLow = bpm - 10;
+    const bpmHigh = bpm + 10;
+    const energyTarget = ENERGY_MAP[seg.mood];
+
+    let matched = candidates
+      .map((track, idx) => ({ track, feat: features[idx] }))
+      .filter(({ feat }) => feat && feat.tempo >= bpmLow && feat.tempo <= bpmHigh)
+      .sort((a, b) => {
+        // Sort by energy closeness
+        return Math.abs(a.feat.energy - energyTarget) - Math.abs(b.feat.energy - energyTarget);
+      })
+      .slice(0, 6);
+
+    // If BPM filter too strict, fall back to best energy matches regardless of BPM
+    if (matched.length < 2) {
+      matched = candidates
+        .map((track, idx) => ({ track, feat: features[idx] }))
+        .filter(({ feat }) => feat)
+        .sort((a, b) => Math.abs(a.feat.energy - energyTarget) - Math.abs(b.feat.energy - energyTarget))
+        .slice(0, 6);
+    }
 
     lbar.style.width = '100%';
 
-    if (r.status === 401) {
-      const newTok = await refreshToken();
-      if (newTok) { token = newTok; fetchTracksForSeg(i, seg, bpm); return; }
-      tlist.innerHTML = `<div class="seg-error">Session expired. <a href="#" onclick="connectSpotify()" style="color:var(--green)">Reconnect Spotify</a></div>`;
+    if (!matched.length) {
+      tlist.innerHTML = `<div class="seg-error">No tracks found. Try different genres.</div>`;
       return;
     }
 
-    if (!r.ok) {
-      let msg = `HTTP ${r.status}`;
-      try { const err = await r.json(); msg = err.error?.message || msg; } catch {}
-      tlist.innerHTML = `<div class="seg-error">Spotify error: ${msg}</div>`;
-      return;
-    }
-
-    const data = await r.json();
-    let tracks = data.tracks || [];
-
-    if (!tracks.length) {
-      // Retry without tempo constraint — energy match only
-      const p2 = new URLSearchParams({ seed_genres: seeds, target_energy: energy, limit: 6 });
-      const r2 = await fetch(`https://api.spotify.com/v1/recommendations?${p2}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const d2 = await r2.json();
-      tracks = d2.tracks || [];
-    }
-
-    if (!tracks.length) {
-      tlist.innerHTML = `<div class="seg-error">No tracks found. Try selecting different genres.</div>`;
-      return;
-    }
-
+    const tracks = matched.map(({ track, feat }) => ({ ...track, tempo: feat?.tempo }));
     tracks.forEach(t => collectedTracks.push(t));
     renderTracks(tlist, tracks, bpm);
 
