@@ -672,21 +672,45 @@ async function connectSpotify() {
 
 async function exchangeCode(code) {
   const verifier = sessionStorage.getItem('pkce_verifier');
+  console.log('[FlowBeat] Exchanging code, verifier present:', !!verifier);
+
+  if (!verifier) {
+    console.error('[FlowBeat] No PKCE verifier found in sessionStorage — exchange will fail');
+    return null;
+  }
+
+  const body = new URLSearchParams({
+    client_id: CLIENT_ID,
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: REDIRECT_URI,
+    code_verifier: verifier
+  });
+
+  console.log('[FlowBeat] Token exchange params:', {
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    code_length: code.length,
+    verifier_length: verifier.length
+  });
+
   const r = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: REDIRECT_URI,
-      code_verifier: verifier
-    })
+    body
   });
-  if (!r.ok) return null;
+
   const data = await r.json();
+  console.log('[FlowBeat] Token exchange response:', r.status, data.error || 'OK');
+
+  if (!r.ok) {
+    console.error('[FlowBeat] Exchange failed:', data);
+    return null;
+  }
+
   sessionStorage.setItem('rc_token', data.access_token);
   if (data.refresh_token) sessionStorage.setItem('rc_refresh', data.refresh_token);
+  console.log('[FlowBeat] Token stored successfully');
   return data.access_token;
 }
 
