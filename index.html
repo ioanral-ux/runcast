@@ -595,7 +595,7 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
     <div class="step-text">Step 3 of 3 — Your playlist</div>
   </div>
   <div class="inner-screen fadein">
-    <div class="section-title">Your RunCast</div>
+    <div class="section-title">Your FlowBeat</div>
     <p class="section-sub" id="results-sub">Matched to your cadence and energy.</p>
     <div class="stats-row" id="stats-row"></div>
     <div id="results-container"></div>
@@ -910,7 +910,7 @@ async function goToResults() {
 }
 
 // ── SPOTIFY TRACK FETCH ───────────────────────────────
-// Uses Search API + Audio Features (recommendations endpoint deprecated for new apps)
+const FLOWBEAT_API = 'https://flowbeat-api.onrender.com';
 
 async function spotifyGet(url) {
   let r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -929,25 +929,22 @@ async function fetchTracksForSeg(i, seg, bpm) {
   const tlist = document.getElementById(`track-list-${i}`);
 
   try {
-    lbar.style.width = '20%';
-
-    // Build search query from selected genres + mood keywords
+    // Step 1: Search Spotify for candidates by genre + mood (25%)
+    lbar.style.width = '25%';
     const moodKeywords = {
-      warmup: 'chill easy',
-      steady: 'running workout',
-      push: 'energy power',
-      peak: 'intense hype pump',
-      cooldown: 'calm relax'
+      warmup: 'chill easy warm',
+      steady: 'running workout steady',
+      push: 'energy power drive',
+      peak: 'intense hype pump fire',
+      cooldown: 'calm relax cool down'
     };
     const genreQuery = selectedGenres.slice(0, 2).join(' ');
     const moodQ = moodKeywords[seg.mood] || 'workout';
-    const query = `${genreQuery} ${moodQ}`;
 
-    // Search for tracks — get 50 so we have enough to filter by BPM
     const searchParams = new URLSearchParams({
-      q: query,
+      q: `${genreQuery} ${moodQ}`,
       type: 'track',
-      limit: 50
+      limit: 30
     });
 
     const searchData = await spotifyGet(`https://api.spotify.com/v1/search?${searchParams}`);
@@ -958,56 +955,71 @@ async function fetchTracksForSeg(i, seg, bpm) {
       return;
     }
 
-    const candidates = searchData.tracks?.items || [];
+    // Only use tracks that have a preview URL (needed for BPM detection)
+    const candidates = (searchData.tracks?.items || []).filter(t => t.preview_url);
+
     if (!candidates.length) {
-      tlist.innerHTML = `<div class="seg-error">No tracks found. Try different genres.</div>`;
+      tlist.innerHTML = `<div class="seg-error">No previewable tracks found. Try different genres.</div>`;
       return;
     }
 
-    // Get audio features for all candidates in one batch call
-    const ids = candidates.map(t => t.id).join(',');
-    const featData = await spotifyGet(`https://api.spotify.com/v1/audio-features?ids=${ids}`);
-    lbar.style.width = '80%';
+    // Step 2: Send preview URLs to FlowBeat API for BPM detection (75%)
+    lbar.style.width = '60%';
+    const payload = candidates.map(t => ({ id: t.id, previewUrl: t.preview_url }));
 
-    const features = featData?.audio_features || [];
+    const apiRes = await fetch(`${FLOWBEAT_API}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tracks: payload })
+    });
 
-    // Match candidates with their features
-    const bpmLow = bpm - 10;
-    const bpmHigh = bpm + 10;
-    const energyTarget = ENERGY_MAP[seg.mood];
+    lbar.style.width = '85%';
 
-    let matched = candidates
-      .map((track, idx) => ({ track, feat: features[idx] }))
-      .filter(({ feat }) => feat && feat.tempo >= bpmLow && feat.tempo <= bpmHigh)
-      .sort((a, b) => {
-        // Sort by energy closeness
-        return Math.abs(a.feat.energy - energyTarget) - Math.abs(b.feat.energy - energyTarget);
+    if (!apiRes.ok) {
+      tlist.innerHTML = `<div class="seg-error">BPM analysis failed (${apiRes.status}). Try again.</div>`;
+      return;
+    }
+
+    const { results } = await apiRes.json();
+
+    // Step 3: Match by BPM — ±8 BPM window, then sort by closeness
+    const bpmLow = bpm - 8;
+    const bpmHigh = bpm + 8;
+
+    const withBpm = candidates
+      .map(track => {
+        const r = results.find(x => x.id === track.id);
+        return { track, bpm: r?.bpm || null };
       })
+      .filter(({ bpm }) => bpm !== null);
+
+    let matched = withBpm
+      .filter(({ bpm: tb }) => tb >= bpmLow && tb <= bpmHigh)
+      .sort((a, b) => Math.abs(a.bpm - bpm) - Math.abs(b.bpm - bpm))
       .slice(0, 6);
 
-    // If BPM filter too strict, fall back to best energy matches regardless of BPM
+    // Fallback: if fewer than 2 matches, widen window to ±15
     if (matched.length < 2) {
-      matched = candidates
-        .map((track, idx) => ({ track, feat: features[idx] }))
-        .filter(({ feat }) => feat)
-        .sort((a, b) => Math.abs(a.feat.energy - energyTarget) - Math.abs(b.feat.energy - energyTarget))
+      matched = withBpm
+        .filter(({ bpm: tb }) => tb >= bpm - 15 && tb <= bpm + 15)
+        .sort((a, b) => Math.abs(a.bpm - bpm) - Math.abs(b.bpm - bpm))
         .slice(0, 6);
     }
 
     lbar.style.width = '100%';
 
     if (!matched.length) {
-      tlist.innerHTML = `<div class="seg-error">No tracks found. Try different genres.</div>`;
+      tlist.innerHTML = `<div class="seg-error">No tracks matched this BPM. Try different genres.</div>`;
       return;
     }
 
-    const tracks = matched.map(({ track, feat }) => ({ ...track, tempo: feat?.tempo }));
+    const tracks = matched.map(({ track, bpm: tb }) => ({ ...track, tempo: tb }));
     tracks.forEach(t => collectedTracks.push(t));
     renderTracks(tlist, tracks, bpm);
 
   } catch (e) {
     console.error('fetchTracksForSeg:', e);
-    tlist.innerHTML = `<div class="seg-error">Error loading tracks: ${e.message}</div>`;
+    tlist.innerHTML = `<div class="seg-error">Error: ${e.message}</div>`;
   }
 }
 
