@@ -708,14 +708,14 @@ async function exchangeCode(code) {
     return null;
   }
 
-  sessionStorage.setItem('rc_token', data.access_token);
-  if (data.refresh_token) sessionStorage.setItem('rc_refresh', data.refresh_token);
+  localStorage.setItem('rc_token', data.access_token);
+  if (data.refresh_token) localStorage.setItem('rc_refresh', data.refresh_token);
   console.log('[FlowBeat] Token stored successfully');
   return data.access_token;
 }
 
 async function refreshToken() {
-  const rt = sessionStorage.getItem('rc_refresh');
+  const rt = localStorage.getItem('rc_refresh');
   if (!rt) return null;
   const r = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
@@ -728,7 +728,7 @@ async function refreshToken() {
   });
   if (!r.ok) return null;
   const data = await r.json();
-  sessionStorage.setItem('rc_token', data.access_token);
+  localStorage.setItem('rc_token', data.access_token);
   return data.access_token;
 }
 
@@ -761,7 +761,7 @@ window.addEventListener('load', async () => {
     }
   }
 
-  const saved = sessionStorage.getItem('rc_token');
+  const saved = localStorage.getItem('rc_token');
   if (saved) {
     const profile = await fetchProfile(saved);
     if (profile) { token = saved; userProfile = profile; initApp(); return; }
