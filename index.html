@@ -544,32 +544,31 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
 .selected-count span { color: var(--green); font-weight: 500; }
 
 /* TWO COLUMN RESULTS LAYOUT */
-#screen-results { flex-direction: column; }
+#screen-results {
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;   /* page itself must NOT scroll */
+}
 .results-layout {
   display: flex;
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - 120px);
-}
-.timeline-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-  padding: 0.75rem 1rem;
-  margin: -1rem -1rem 1rem;
+  min-height: 0;      /* critical: lets flex children shrink below content size */
+  /* centre the two-column block with equal gutters */
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
 }
 .results-left {
   flex: 1;
-  max-width: 60%;
+  min-width: 0;       /* prevent flex blowout */
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
-  overflow: hidden;
+  overflow: hidden;   /* column itself does NOT scroll */
 }
 .timeline-sticky-bar {
-  flex-shrink: 0;
+  flex-shrink: 0;     /* never shrinks — always visible above the scroll area */
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   padding: 0.75rem 1rem;
@@ -577,12 +576,9 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
 }
 .results-left-inner {
   flex: 1;
-  overflow-y: auto;
-  padding: 0;
-}
-.results-left-inner {
+  min-height: 0;      /* critical for nested flex scroll */
+  overflow-y: auto;   /* ONLY this div scrolls */
   padding: 1rem 1rem 2rem;
-  max-width: 100%;
 }
 .results-right {
   width: 320px;
@@ -697,8 +693,10 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
 
 /* MOBILE: stack columns */
 @media (max-width: 540px) {
+  #screen-results { height: auto; overflow: visible; }
   .results-layout { flex-direction: column; height: auto; overflow: visible; }
-  .results-left { border-right: none; border-bottom: 1px solid var(--border); overflow-y: visible; }
+  .results-left { border-right: none; border-bottom: 1px solid var(--border); overflow: visible; }
+  .results-left-inner { overflow-y: visible; min-height: unset; }
   .results-right { width: 100%; }
 }
 
