@@ -1532,7 +1532,7 @@ async function fetchTracksForSeg(i, seg, bpm) {
     );
     lbar.style.width = '55%';
 
-    // ── Step 3: Merge + deduplicate by track ID ───────────────────────
+    // ── Step 3: Merge + deduplicate by ID, then by title+artist ─────
     const mergedMap = new Map();
     for (const data of searchResults) {
       if (!data?.tracks?.items) continue;
@@ -1541,8 +1541,24 @@ async function fetchTracksForSeg(i, seg, bpm) {
       }
     }
 
-    // Remove tracks already shown in other segments
+    // Remove tracks already shown in other segments (by ID)
     for (const id of seenTrackIds) mergedMap.delete(id);
+
+    // Secondary dedup: same song can have multiple IDs (explicit/clean/regional)
+    // Key = normalised "title::artist" — keep first occurrence only
+    const titleSeen = new Set();
+    for (const [id, t] of mergedMap) {
+      const key = `${t.name.toLowerCase().replace(/\s+/g,' ').trim()}::${t.artists[0]?.name.toLowerCase().trim()}`;
+      if (titleSeen.has(key)) { mergedMap.delete(id); continue; }
+      titleSeen.add(key);
+    }
+
+    // Duration filter: drop tracks under 1 min or over 7 min
+    const MIN_MS = 60_000;
+    const MAX_MS = 7 * 60_000;
+    for (const [id, t] of mergedMap) {
+      if (t.duration_ms < MIN_MS || t.duration_ms > MAX_MS) mergedMap.delete(id);
+    }
 
     const allTracks = [...mergedMap.values()];
 
