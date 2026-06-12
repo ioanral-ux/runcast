@@ -541,6 +541,140 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
 }
 .selected-count span { color: var(--green); font-weight: 500; }
 
+/* TWO COLUMN RESULTS LAYOUT */
+#screen-results { flex-direction: column; }
+.results-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 120px);
+}
+.results-left {
+  flex: 1;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+.results-left-inner {
+  padding: 1rem 1rem 2rem;
+  max-width: 100%;
+}
+.results-right {
+  width: 220px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--surface);
+}
+
+/* PLAYLIST PANEL */
+.playlist-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.playlist-panel-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+.playlist-panel-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.playlist-panel-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.playlist-seg-block {
+  padding: 8px 10px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.playlist-seg-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.playlist-seg-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.playlist-seg-name {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.playlist-seg-bpm {
+  font-size: 10px;
+  color: var(--muted2);
+  margin-left: auto;
+}
+.playlist-seg-coverage {
+  font-size: 10px;
+  color: var(--muted2);
+  margin-bottom: 4px;
+  padding-left: 14px;
+}
+.playlist-seg-coverage.full { color: var(--green); }
+.playlist-track-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-top: 1px solid var(--border);
+}
+.playlist-track-mini-img {
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  background: var(--surface2);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.playlist-track-mini-info { flex: 1; min-width: 0; }
+.playlist-track-mini-name {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.playlist-track-mini-dur { font-size: 10px; color: var(--muted2); }
+.playlist-track-remove {
+  background: none; border: none;
+  color: var(--muted2); font-size: 14px;
+  cursor: pointer; padding: 0; line-height: 1;
+  flex-shrink: 0;
+}
+.playlist-track-remove:hover { color: #ef4444; }
+.playlist-empty-seg {
+  font-size: 11px;
+  color: var(--muted2);
+  font-style: italic;
+  padding: 4px 0 6px 14px;
+}
+.playlist-panel-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+}
+.playlist-panel-footer .btn { font-size: 13px; padding: 10px 12px; }
+
+/* MOBILE: stack columns */
+@media (max-width: 540px) {
+  .results-layout { flex-direction: column; height: auto; overflow: visible; }
+  .results-left { border-right: none; border-bottom: 1px solid var(--border); overflow-y: visible; }
+  .results-right { width: 100%; }
+}
+
 /* BOTTOM NAV AREA */
 .bottom-spacer { height: 80px; }
 
@@ -719,33 +853,44 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
     </div>
     <div class="step-text">Step 3 of 3 — Build your playlist</div>
   </div>
-  <div class="inner-screen fadein">
-    <div class="section-title">Your FlowBeat</div>
-    <p class="section-sub" id="results-sub">Pick the songs you want. Watch the timeline fill up.</p>
+  <div class="results-layout">
 
-    <!-- WORKOUT TIMELINE -->
-    <div class="timeline-wrap">
-      <div class="timeline-title">
-        <span>Workout timeline</span>
-        <span class="coverage-text" id="coverage-text">0 of <span id="total-dur-label">0</span> min covered</span>
+    <!-- LEFT: timeline + suggestions -->
+    <div class="results-left">
+      <div class="results-left-inner fadein">
+
+        <!-- WORKOUT TIMELINE -->
+        <div class="timeline-wrap">
+          <div class="timeline-title">
+            <span>Workout timeline</span>
+            <span id="coverage-text" style="font-size:11px; color:var(--muted);">0 of <span id="total-dur-label">0</span> min covered</span>
+          </div>
+          <div class="timeline-bar" id="timeline-bar"></div>
+          <div class="timeline-labels" id="timeline-labels"></div>
+        </div>
+
+        <div id="results-container"></div>
+        <div class="bottom-spacer"></div>
       </div>
-      <div class="timeline-bar" id="timeline-bar"></div>
-      <div class="timeline-labels" id="timeline-labels"></div>
     </div>
 
-    <div id="results-container"></div>
-
-    <!-- OPEN IN SPOTIFY -->
-    <div class="open-section" id="open-section">
-      <div class="open-title">Open in Spotify</div>
-      <div class="open-sub">Pick the songs you want above, then open them all in Spotify. Add them to a playlist there — you stay in control.</div>
-      <button class="btn btn-primary" onclick="openInSpotify()" id="btn-open" disabled>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 11-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.623.623 0 01.207.857zm1.223-2.722a.779.779 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.778.778 0 11-.453-1.489c3.633-1.105 8.147-.569 11.233 1.327a.779.779 0 01.257 1.071zm.105-2.835C14.692 9.15 9.375 8.977 6.297 9.92a.935.935 0 11-.543-1.79c3.532-1.072 9.404-.865 13.115 1.338a.935.935 0 01-.955 1.6z"/></svg>
-        Open selected in Spotify
-      </button>
-      <div class="selected-count" id="selected-count">Select songs above to build your playlist</div>
+    <!-- RIGHT: playlist builder -->
+    <div class="results-right" id="results-right">
+      <div class="playlist-panel">
+        <div class="playlist-panel-header">
+          <div class="playlist-panel-title">Your Playlist</div>
+          <div class="playlist-panel-sub" id="selected-count">Tap + to add songs</div>
+        </div>
+        <div id="playlist-segments"></div>
+        <div class="playlist-panel-footer" id="playlist-footer" style="display:none;">
+          <button class="btn btn-primary" onclick="openInSpotify()" id="btn-open">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 11-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.623.623 0 01.207.857zm1.223-2.722a.779.779 0 01-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.778.778 0 11-.453-1.489c3.633-1.105 8.147-.569 11.233 1.327a.779.779 0 01.257 1.071zm.105-2.835C14.692 9.15 9.375 8.977 6.297 9.92a.935.935 0 11-.543-1.79c3.532-1.072 9.404-.865 13.115 1.338a.935.935 0 01-.955 1.6z"/></svg>
+            Open in Spotify
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="bottom-spacer"></div>
+
   </div>
 </div>
 
@@ -1036,7 +1181,7 @@ function goToWorkout() {
   goTo('workout');
 }
 
-// Selected tracks per segment: { segIndex: [{ track, durationSec }] }
+// Selected tracks per segment: { segIndex: [{ uri, durationSec, name, artist, img, bpm }] }
 let selectedTracks = {};
 
 async function goToResults() {
@@ -1049,12 +1194,13 @@ async function goToResults() {
   const dist = totalDist();
   const unit = document.getElementById('dist-unit').value;
 
-  document.getElementById('results-sub').textContent =
-    `${dist.toFixed(1)} ${unit} · ~${totalMin} min · Pick songs for each segment`;
   document.getElementById('total-dur-label').textContent = totalMin;
 
   // Build timeline bar
   buildTimeline(totalSecs);
+
+  // Init playlist panel segments (right column)
+  initPlaylistPanel();
 
   const rc = document.getElementById('results-container');
   rc.innerHTML = '';
@@ -1095,6 +1241,133 @@ async function goToResults() {
   }
 }
 
+function initPlaylistPanel() {
+  const container = document.getElementById('playlist-segments');
+  container.innerHTML = '';
+  segments.forEach((seg, i) => {
+    const bpm = calcBPM(seg.pm, seg.ps);
+    const moodColor = MOOD_COLOR[seg.mood];
+    const block = document.createElement('div');
+    block.className = 'playlist-seg-block';
+    block.id = `pseg-${i}`;
+    block.innerHTML = `
+      <div class="playlist-seg-label">
+        <div class="playlist-seg-dot" style="background:${moodColor};"></div>
+        <span class="playlist-seg-name" style="color:${moodColor};">${MOOD_LABELS[seg.mood]}</span>
+        <span class="playlist-seg-bpm">${bpm} BPM</span>
+      </div>
+      <div class="playlist-seg-coverage" id="pcov-${i}">0 / ${Math.round((seg.pm*60+seg.ps)*seg.dist/60)} min</div>
+      <div id="ptracks-${i}">
+        <div class="playlist-empty-seg">No songs yet</div>
+      </div>
+    `;
+    container.appendChild(block);
+  });
+  document.getElementById('playlist-footer').style.display = 'none';
+  document.getElementById('selected-count').textContent = 'Tap + to add songs';
+}
+
+function renderPlaylistPanel() {
+  const totalWorkoutSecs = totalDurationSec();
+  let totalSelectedSecs = 0;
+  let totalTracks = 0;
+
+  segments.forEach((seg, i) => {
+    const segWorkoutSecs = (seg.pm * 60 + seg.ps) * seg.dist;
+    const selected = selectedTracks[i] || [];
+    const selectedSecs = selected.reduce((s, t) => s + t.durationSec, 0);
+    totalSelectedSecs += Math.min(selectedSecs, segWorkoutSecs);
+    totalTracks += selected.length;
+
+    // Update coverage label
+    const covEl = document.getElementById(`pcov-${i}`);
+    if (covEl) {
+      const selMin = (selectedSecs / 60).toFixed(1);
+      const worMin = Math.round(segWorkoutSecs / 60);
+      covEl.textContent = `${selMin} / ${worMin} min`;
+      covEl.className = `playlist-seg-coverage${selectedSecs >= segWorkoutSecs ? ' full' : ''}`;
+    }
+
+    // Render mini track list
+    const trackContainer = document.getElementById(`ptracks-${i}`);
+    if (trackContainer) {
+      if (!selected.length) {
+        trackContainer.innerHTML = '<div class="playlist-empty-seg">No songs yet</div>';
+      } else {
+        trackContainer.innerHTML = selected.map((t, ti) => `
+          <div class="playlist-track-mini">
+            ${t.img ? `<img class="playlist-track-mini-img" src="${t.img}" alt="" />` : '<div class="playlist-track-mini-img"></div>'}
+            <div class="playlist-track-mini-info">
+              <div class="playlist-track-mini-name">${t.name}</div>
+              <div class="playlist-track-mini-dur">${formatDuration(t.durationSec * 1000)}</div>
+            </div>
+            <button class="playlist-track-remove" onclick="removeFromPlaylist(${i}, ${ti})" aria-label="Remove">×</button>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Sync left-side coverage label
+    const segCovEl = document.getElementById(`seg-coverage-${i}`);
+    if (segCovEl) {
+      const selMin = (selectedSecs / 60).toFixed(1);
+      const worMin = Math.round(segWorkoutSecs / 60);
+      segCovEl.textContent = `${selMin}/${worMin}m`;
+      segCovEl.style.color = selectedSecs >= segWorkoutSecs ? 'var(--green)' : 'var(--muted)';
+    }
+  });
+
+  // Update timeline fills
+  segments.forEach((seg, i) => {
+    const segWorkoutSecs = (seg.pm * 60 + seg.ps) * seg.dist;
+    const selected = selectedTracks[i] || [];
+    const selectedSecs = selected.reduce((s, t) => s + t.durationSec, 0);
+    const fillPct = Math.min(100, (selectedSecs / segWorkoutSecs) * 100);
+    const overflowPct = selectedSecs > segWorkoutSecs
+      ? Math.min(100, ((selectedSecs - segWorkoutSecs) / segWorkoutSecs) * 100) : 0;
+    const fill = document.getElementById(`tfill-${i}`);
+    const overflow = document.getElementById(`toverflow-${i}`);
+    if (fill) fill.style.width = `${fillPct}%`;
+    if (overflow) overflow.style.width = `${overflowPct}%`;
+  });
+
+  // Update coverage text
+  const totalMin = Math.round(totalWorkoutSecs / 60);
+  const coveredMin = (totalSelectedSecs / 60).toFixed(1);
+  const covEl = document.getElementById('coverage-text');
+  const allCovered = totalSelectedSecs >= totalWorkoutSecs;
+  if (covEl) covEl.innerHTML = `<span style="color:${allCovered ? 'var(--green)' : 'var(--muted)'};">${coveredMin} of ${totalMin} min covered</span>`;
+
+  // Update footer
+  const footer = document.getElementById('playlist-footer');
+  const countEl = document.getElementById('selected-count');
+  if (totalTracks > 0) {
+    const totalMusicMins = (Object.values(selectedTracks).flat().reduce((s, t) => s + t.durationSec, 0) / 60).toFixed(1);
+    if (countEl) countEl.innerHTML = `<span style="color:var(--green); font-weight:500;">${totalTracks} tracks · ${totalMusicMins} min</span>`;
+    if (footer) footer.style.display = 'block';
+  } else {
+    if (countEl) countEl.textContent = 'Tap + to add songs';
+    if (footer) footer.style.display = 'none';
+  }
+}
+
+function removeFromPlaylist(segIdx, trackIdx) {
+  if (selectedTracks[segIdx]) {
+    const t = selectedTracks[segIdx][trackIdx];
+    selectedTracks[segIdx].splice(trackIdx, 1);
+    // Un-highlight the track row in left column
+    document.querySelectorAll('.track-row.selected').forEach(row => {
+      const btn = row.querySelector('.track-add-btn');
+      if (btn && row.dataset.uri === t.uri) {
+        btn.classList.remove('added');
+        btn.textContent = '+';
+        row.classList.remove('selected');
+      }
+    });
+    renderPlaylistPanel();
+  }
+}
+
 function buildTimeline(totalSecs) {
   const bar = document.getElementById('timeline-bar');
   const labels = document.getElementById('timeline-labels');
@@ -1125,60 +1398,9 @@ function buildTimeline(totalSecs) {
   });
 }
 
-function updateTimeline() {
-  const totalWorkoutSecs = totalDurationSec();
-  let totalSelectedSecs = 0;
 
-  segments.forEach((seg, i) => {
-    const segWorkoutSecs = (seg.pm * 60 + seg.ps) * seg.dist;
-    const selected = selectedTracks[i] || [];
-    const selectedSecs = selected.reduce((s, t) => s + t.durationSec, 0);
-    totalSelectedSecs += Math.min(selectedSecs, segWorkoutSecs);
 
-    const fillPct = Math.min(100, (selectedSecs / segWorkoutSecs) * 100);
-    const overflowPct = selectedSecs > segWorkoutSecs
-      ? Math.min(100, ((selectedSecs - segWorkoutSecs) / segWorkoutSecs) * 100)
-      : 0;
-
-    const fill = document.getElementById(`tfill-${i}`);
-    const overflow = document.getElementById(`toverflow-${i}`);
-    if (fill) fill.style.width = `${fillPct}%`;
-    if (overflow) overflow.style.width = `${overflowPct}%`;
-
-    // Update segment coverage label
-    const covEl = document.getElementById(`seg-coverage-${i}`);
-    if (covEl) {
-      const selMin = Math.round(selectedSecs / 60 * 10) / 10;
-      const worMin = Math.round(segWorkoutSecs / 60);
-      covEl.textContent = `${selMin}/${worMin}m`;
-      covEl.style.color = selectedSecs >= segWorkoutSecs ? 'var(--green)' : 'var(--muted)';
-    }
-  });
-
-  // Update coverage text
-  const totalMin = Math.round(totalWorkoutSecs / 60);
-  const coveredMin = Math.round(totalSelectedSecs / 60 * 10) / 10;
-  const covEl = document.getElementById('coverage-text');
-  if (covEl) {
-    const allCovered = totalSelectedSecs >= totalWorkoutSecs;
-    covEl.innerHTML = `<span class="${allCovered ? '' : ''}" style="color:${allCovered ? 'var(--green)' : 'var(--muted)'}">${coveredMin} of ${totalMin} min covered</span>`;
-  }
-
-  // Count total selected
-  const allSelected = Object.values(selectedTracks).flat();
-  const countEl = document.getElementById('selected-count');
-  const btn = document.getElementById('btn-open');
-  if (allSelected.length > 0) {
-    const totalMusicMins = Math.round(allSelected.reduce((s, t) => s + t.durationSec, 0) / 60 * 10) / 10;
-    if (countEl) countEl.innerHTML = `<span>${allSelected.length} tracks</span> · ${totalMusicMins} min of music selected`;
-    if (btn) btn.disabled = false;
-  } else {
-    if (countEl) countEl.textContent = 'Select songs above to build your playlist';
-    if (btn) btn.disabled = true;
-  }
-}
-
-function toggleTrack(segIdx, trackIdx, uri, durationMs, btnEl, rowEl) {
+function toggleTrack(segIdx, trackIdx, uri, durationMs, name, artist, img, bpm, btnEl, rowEl) {
   if (!selectedTracks[segIdx]) selectedTracks[segIdx] = [];
   const existing = selectedTracks[segIdx].findIndex(t => t.uri === uri);
   if (existing >= 0) {
@@ -1186,23 +1408,24 @@ function toggleTrack(segIdx, trackIdx, uri, durationMs, btnEl, rowEl) {
     btnEl.classList.remove('added');
     btnEl.textContent = '+';
     rowEl.classList.remove('selected');
+    rowEl.dataset.uri = '';
   } else {
-    selectedTracks[segIdx].push({ uri, durationSec: durationMs / 1000 });
+    selectedTracks[segIdx].push({ uri, durationSec: durationMs / 1000, name, artist, img, bpm });
     btnEl.classList.add('added');
     btnEl.textContent = '✓';
     rowEl.classList.add('selected');
+    rowEl.dataset.uri = uri;
   }
-  updateTimeline();
+  renderPlaylistPanel();
 }
 
 function openInSpotify() {
   const allSelected = Object.values(selectedTracks).flat();
   if (!allSelected.length) { toast('Select some songs first'); return; }
-  // Open each track in Spotify — user can add to playlist from there
   allSelected.forEach((t, i) => {
     setTimeout(() => {
       window.open(`https://open.spotify.com/track/${t.uri.replace('spotify:track:', '')}`, '_blank');
-    }, i * 300);
+    }, i * 400);
   });
   toast(`Opening ${allSelected.length} tracks in Spotify`);
 }
@@ -1373,28 +1596,44 @@ async function fetchTracksForSeg(i, seg, bpm) {
   }
 }
 
-function renderTracks(container, tracks, bpm) {
-  container.innerHTML = tracks.map(t => {
-    const img = t.album?.images?.[2]?.url;
+function formatDuration(ms) {
+  if (!ms) return '';
+  const totalSec = Math.round(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = String(totalSec % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function renderTracks(container, tracks, bpm, segIdx) {
+  const rows = tracks.map((t, trackIdx) => {
+    const img = t.album?.images?.[2]?.url || '';
     const imgEl = img
       ? `<img class="track-img" src="${img}" alt="" loading="lazy" />`
       : `<div class="track-img-placeholder"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 18V5l12-2v13M9 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-2c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/></svg></div>`;
     const artistNames = t.artists.map(a => a.name).join(', ');
     const trackBpm = t.tempo ? Math.round(t.tempo) : bpm;
+    const dur = formatDuration(t.duration_ms);
+    const rowId = `row-${segIdx}-${trackIdx}`;
+    const btnId = `btn-${segIdx}-${trackIdx}`;
+    const safeName = (t.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const safeArtist = artistNames.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const safeImg = img.replace(/'/g, "\\'");
     return `
-      <div class="track-row">
+      <div class="track-row" id="${rowId}">
         ${imgEl}
         <div class="track-info">
           <div class="track-name">${t.name}</div>
           <div class="track-artist">${artistNames}</div>
+          ${dur ? `<div class="track-duration">${dur}</div>` : ''}
         </div>
         <span class="track-bpm-badge">${trackBpm} BPM</span>
-        <a href="${t.external_urls?.spotify}" target="_blank" class="track-open" aria-label="Open in Spotify">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
-        </a>
+        <button class="track-add-btn" id="${btnId}"
+          onclick="toggleTrack(${segIdx}, ${trackIdx}, '${t.uri}', ${t.duration_ms || 0}, '${safeName}', '${safeArtist}', '${safeImg}', ${trackBpm}, document.getElementById('${btnId}'), document.getElementById('${rowId}'))"
+          aria-label="Add to playlist">+</button>
       </div>
     `;
   }).join('');
+  container.innerHTML = rows;
 }
 
 function toggleSeg(i) {
