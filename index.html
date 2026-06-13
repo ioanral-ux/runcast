@@ -13,8 +13,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
 <style>
 :root {
-  --green: #1DB954;
-  --green-dim: #17a349;
+  /* ── accent ── */
+  --accent: #1DB954;
+  --accent-dim: #17a349;
+  /* ── dark theme (default) ── */
   --bg: #0a0a0a;
   --surface: #141414;
   --surface2: #1e1e1e;
@@ -23,16 +25,69 @@
   --text: #f0f0f0;
   --muted: #888;
   --muted2: #555;
+  --track-hover: rgba(255,255,255,0.04);
+  /* ── keep --green alias so existing code doesn't break ── */
+  --green: var(--accent);
+  --green-dim: var(--accent-dim);
+  /* ── typography / shape ── */
   --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --radius: 12px;
   --radius-sm: 8px;
+  /* ── mood colours ── */
   --mood-warmup: #f59e0b;
   --mood-steady: #1DB954;
   --mood-push: #f97316;
   --mood-peak: #ef4444;
   --mood-cooldown: #60a5fa;
 }
+
+/* ── LIGHT / ORANGE THEME ───────────────────────────── */
+body.theme-light {
+  --accent: #f97316;
+  --accent-dim: #ea6c0a;
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --surface2: #f1ede8;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.13);
+  --text: #1a1a1a;
+  --muted: #7a7065;
+  --muted2: #b5ada4;
+  --track-hover: rgba(0,0,0,0.03);
+  --green: var(--accent);
+  --green-dim: var(--accent-dim);
+  --mood-steady: #f97316;   /* orange replaces Spotify green in light mode */
+}
+
+/* light mode: fix things that use hardcoded dark colours */
+body.theme-light input,
+body.theme-light select {
+  background: var(--surface2);
+  color: var(--text);
+}
+body.theme-light select option { background: var(--surface); color: var(--text); }
+body.theme-light .btn-primary { color: #fff; }
+body.theme-light .genre-pill.on { color: #fff; }
+body.theme-light .splash-bg {
+  background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(249,115,22,0.13) 0%, transparent 70%);
+}
+body.theme-light ::-webkit-scrollbar-thumb { background: var(--muted2); }
+
+/* ── THEME TOGGLE BUTTON ─────────────────────────────── */
+.theme-toggle {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.theme-toggle svg { pointer-events: none; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
 body {
@@ -41,6 +96,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background 0.25s, color 0.25s;
 }
 
 /* SCROLLBAR */
@@ -755,6 +811,9 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
 ════════════════════════════════ -->
 <div class="screen active" id="screen-splash">
   <div class="splash-bg"></div>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme" style="position:absolute; top:1rem; right:1rem;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
   <div class="fadein">
     <div class="splash-logo">Flow<span>Beat</span></div>
     <p class="splash-tag">Run to the beat</p>
@@ -779,6 +838,9 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
     <div class="topbar-logo">Flow<span>Beat</span></div>
     <div class="topbar-user" id="user-display"></div>
     <div class="topbar-avatar" id="user-avatar">?</div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme" id="theme-btn-profile">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
   </div>
   <div class="steps-wrap">
     <div class="steps-bar">
@@ -828,7 +890,10 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       Back
     </button>
-    <div class="topbar-logo" style="text-align:right;">Flow<span>Beat</span></div>
+    <div class="topbar-logo" style="text-align:right; flex:1;">Flow<span>Beat</span></div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
   </div>
   <div class="steps-wrap">
     <div class="steps-bar">
@@ -868,7 +933,10 @@ select.mood-cooldown { border-left: 3px solid var(--mood-cooldown); }
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       Edit
     </button>
-    <div class="topbar-logo" style="text-align:right;">Flow<span>Beat</span></div>
+    <div class="topbar-logo" style="text-align:right; flex:1;">Flow<span>Beat</span></div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
   </div>
   <div class="steps-wrap">
     <div class="steps-bar">
@@ -935,6 +1003,33 @@ const GENRE_SEEDS = {
   'Country': 'country', 'Funk': 'funk', 'Punk': 'punk'
 };
 const ENERGY_MAP = { warmup: 0.4, steady: 0.6, push: 0.75, peak: 0.9, cooldown: 0.3 };
+
+// ── THEME ─────────────────────────────────────────────
+const SUN_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const MOON_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+function applyTheme(isLight) {
+  document.body.classList.toggle('theme-light', isLight);
+  // swap icon on all toggles: light mode shows moon (to go dark), dark mode shows sun (to go light)
+  document.querySelectorAll('.theme-toggle').forEach(btn => {
+    btn.innerHTML = isLight ? MOON_ICON : SUN_ICON;
+    btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+  });
+  // update theme-color meta for mobile browser chrome
+  document.querySelector('meta[name="theme-color"]').content = isLight ? '#fafaf8' : '#0a0a0a';
+}
+
+function toggleTheme() {
+  const isLight = !document.body.classList.contains('theme-light');
+  localStorage.setItem('fb_theme', isLight ? 'light' : 'dark');
+  applyTheme(isLight);
+}
+
+// Apply saved theme immediately (before first paint if possible)
+(function() {
+  const saved = localStorage.getItem('fb_theme');
+  if (saved === 'light') applyTheme(true);
+})();
 
 let token = null;
 let userProfile = null;
